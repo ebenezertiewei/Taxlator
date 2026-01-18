@@ -6,10 +6,10 @@ import taxUpdate1 from "../assets/taxUpdate1.png";
 import taxTipsUpdate from "../assets/taxTipsUpdate.png";
 import companyIncomeTax from "../assets/companyIncomeTax.png";
 // About pics
-import frameArrow from "../assets/FrameArrow.png";
-import frameCarbon from "../assets/FrameCarbon.png";
+import frameArrow from "../assets/frameArrow.png";
+import frameCarbon from "../assets/frameCarbon.png";
 import frameUser from "../assets/fameUser.png";
-import frameStars from "../assets/FrameStars.png";
+import frameStars from "../assets/frameStars.png";
 
 function SectionTitle({
 	title,
