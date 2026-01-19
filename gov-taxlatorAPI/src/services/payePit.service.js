@@ -32,6 +32,9 @@ exports.calculatePAYE = async ({
 
 	const taxableIncome = grossIncome - totalDeductions;
 
+	const initialExempt = Math.min(800000, taxableIncome);
+	const taxableRemaining = Math.max(0, taxableIncome - initialExempt);
+
 	// Progressive tax
 	const bands = [
 		{ limit: 800000, rate: 0 },
@@ -72,8 +75,10 @@ exports.calculatePAYE = async ({
 		grossIncome,
 		netIncome: grossIncome - tax,
 		totalDeductions,
-		deductions,
 		taxableIncome,
+		initialExempt,
+		taxableRemaining,
+		deductions,
 		totalTax: tax,
 		taxBands: [
 			{ label: "₦0 - ₦800,000", rate: "0%" },

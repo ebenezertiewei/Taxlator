@@ -39,7 +39,7 @@ const hasGmailEnv =
 
 if (!hasGmailEnv) {
 	console.warn(
-		"⚠️ Gmail API env vars missing. Email sending will fail until configured."
+		"⚠️ Gmail API env vars missing. Email sending will fail until configured.",
 	);
 }
 
@@ -51,7 +51,7 @@ mongoose
 	.then(() => {
 		console.log("✅ Successfully connected to MongoDB");
 
-		server = app.listen(PORT, () => {
+		server = app.listen(PORT, "0.0.0.0", () => {
 			console.log(`🚀 Tax service running on port ${PORT}`);
 		});
 	})

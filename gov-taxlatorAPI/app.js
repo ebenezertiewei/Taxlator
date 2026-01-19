@@ -20,11 +20,7 @@ const app = express();
 const isProd = process.env.NODE_ENV === "production";
 const allowLocalhostInProd = process.env.ALLOW_LOCALHOST_CORS === "true";
 
-const localOrigins = [
-	"http://localhost:5173",
-	"http://localhost:3000",
-	"http://localhost:8000",
-];
+const localOrigins = ["http://localhost:5173", "http://localhost:8000"];
 
 const allowedOrigins = [
 	...(isProd ? [process.env.CLIENT_URL].filter(Boolean) : localOrigins),
@@ -47,7 +43,7 @@ app.use(
 		credentials: true,
 		methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 		allowedHeaders: ["Content-Type", "Authorization"],
-	})
+	}),
 );
 
 // Middlewares
@@ -82,14 +78,14 @@ app.get("/oauth2callback", (req, res) => {
 	return res
 		.status(200)
 		.send(
-			"Authorization received. Copy the code from the URL and paste it into your terminal."
+			"Authorization received. Copy the code from the URL and paste it into your terminal.",
 		);
 });
 
 // Root endpoint
 app.get("/", (req, res) => {
 	res.send(
-		"✅ Gov-Taxlator API is running. Available routes: /api/auth, /api/tax, /api/vat, /health"
+		"✅ Gov-Taxlator API is running. Available routes: /api/auth, /api/tax, /api/vat, /health",
 	);
 });
 
