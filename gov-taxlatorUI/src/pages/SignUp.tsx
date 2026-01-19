@@ -64,10 +64,7 @@ export default function SignUp() {
 						First Name
 					</label>
 					<input
-						className="
-			mt-1 w-full box-border rounded border px-3 py-2 text-base sm:text-sm
-			focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0
-		"
+						className="w-full box-border rounded border px-3 py-2 pr-12 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0"
 						value={firstName}
 						onChange={(e) => setFirstName(e.target.value)}
 						placeholder="Enter first name"
@@ -78,10 +75,7 @@ export default function SignUp() {
 						Last Name
 					</label>
 					<input
-						className="
-			mt-1 w-full box-border rounded border px-3 py-2 text-base sm:text-sm
-			focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0
-		"
+						className="w-full box-border rounded border px-3 py-2 pr-12 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0"
 						value={lastName}
 						onChange={(e) => setLastName(e.target.value)}
 						placeholder="Enter last name"
@@ -93,10 +87,7 @@ export default function SignUp() {
 					</label>
 					<input
 						type="email"
-						className="
-			mt-1 w-full box-border rounded border px-3 py-2 text-base sm:text-sm
-			focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0
-		"
+						className="w-full box-border rounded border px-3 py-2 pr-12 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0"
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
 						placeholder="Enter your email"
@@ -110,10 +101,7 @@ export default function SignUp() {
 					{/* 🔐 PASSWORD WITH TOGGLE */}
 					<div className="relative mt-1">
 						<input
-							className="
-				w-full box-border rounded border px-3 py-2 pr-12 text-base sm:text-sm
-				focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0
-			"
+							className="w-full box-border rounded border px-3 py-2 pr-12 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0"
 							type={showPassword ? "text" : "password"}
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}

@@ -49,8 +49,8 @@ export default function Navbar() {
 	return (
 		<>
 			<header className="bg-white border-b w-full">
-				<div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-					{/* Logo */}
+				<div className="max-w-6xl mx-auto px-4 py-3 flex items-center">
+					{/* LEFT: Logo */}
 					<Link to="/" className="flex items-center gap-2 shrink-0">
 						<div className="w-9 h-9 rounded bg-brand-700 text-white grid place-items-center font-bold">
 							T
@@ -63,8 +63,8 @@ export default function Navbar() {
 						</div>
 					</Link>
 
-					{/* DESKTOP NAV */}
-					<nav className="hidden md:flex items-center gap-2">
+					{/* CENTER: Desktop nav */}
+					<nav className="hidden md:flex flex-1 items-center justify-center gap-2">
 						<NavLink
 							to="/"
 							className={({ isActive }) =>
@@ -78,7 +78,6 @@ export default function Navbar() {
 							Home
 						</NavLink>
 
-						{/* CALCULATE (MANUAL ACTIVE) */}
 						<button
 							onClick={() => setOpenCalc(true)}
 							className={`px-3 py-2 rounded text-sm font-medium ${
@@ -132,18 +131,17 @@ export default function Navbar() {
 						</NavLink>
 					</nav>
 
-					{/* MOBILE HAMBURGER */}
-					<div className="flex items-center gap-2 w-full justify-end">
-						{/* MOBILE HAMBURGER / CLOSE */}
+					{/* RIGHT: Auth + Mobile */}
+					<div className="ml-auto flex items-center gap-2 shrink-0">
 						<button
 							onClick={() => setMobileOpen((v) => !v)}
 							className="md:hidden w-9 h-9 rounded border grid place-items-center hover:bg-slate-50"
 							aria-label={mobileOpen ? "Close menu" : "Open menu"}
 						>
 							{mobileOpen ? (
-								<X className="w-7 h-7" />
+								<X className="w-6 h-6" />
 							) : (
-								<Menu className="w-7 h-7" />
+								<Menu className="w-6 h-6" />
 							)}
 						</button>
 

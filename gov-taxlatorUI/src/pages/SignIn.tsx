@@ -68,7 +68,7 @@ export default function SignIn() {
 
 					<label className="text-xs font-semibold text-slate-700">Email</label>
 					<input
-						className="mt-1 w-full rounded border px-3 py-2 text-sm"
+						className="w-full box-border rounded border px-3 py-2 pr-12 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0"
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
 						placeholder="Enter your email"
@@ -81,7 +81,7 @@ export default function SignIn() {
 
 					<div className="relative mt-1">
 						<input
-							className="w-full rounded border px-3 py-2 pr-10 text-sm"
+							className="w-full box-border rounded border px-3 py-2 pr-12 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0"
 							type={showPassword ? "text" : "password"}
 							value={password}
 							onChange={(e) => setPassword(e.target.value)}
