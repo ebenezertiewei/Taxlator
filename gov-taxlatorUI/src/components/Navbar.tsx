@@ -34,10 +34,14 @@ function NavItem({
 export default function Navbar() {
 	const navigate = useNavigate();
 	const location = useLocation();
-	const { authenticated, logout } = useAuth();
+	const { authenticated, logout, loading } = useAuth();
 
 	const [openCalc, setOpenCalc] = useState(false);
 	const [mobileOpen, setMobileOpen] = useState(false);
+
+	if (loading) {
+		return null;
+	}
 
 	const isCalculateActive =
 		openCalc || location.pathname.startsWith("/calculate");

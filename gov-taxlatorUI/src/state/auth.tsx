@@ -1,5 +1,5 @@
-// taxlator/src/state/auth.tsx
-import React, { useMemo, useState } from "react";
+// src/state/auth.tsx
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	api,
 	clearToken,
@@ -10,12 +10,41 @@ import {
 import { ENDPOINTS } from "../api/endpoints";
 import { AuthCtx } from "./auth.context";
 import type { AuthContextValue } from "./auth.context";
+import type { User } from "../api/types";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-	const [authenticated, setAuthenticated] = useState(() => Boolean(getToken()));
+	const [user, setUser] = useState<User | null>(null);
+	const [loading, setLoading] = useState(true);
 
-	const value = useMemo<AuthContextValue>(
-		() => ({
+	const refresh = useCallback(async () => {
+		const token = getToken();
+		if (!token) {
+			setUser(null);
+			setLoading(false);
+			return;
+		}
+
+		try {
+			const { data } = await api.get(ENDPOINTS.me);
+			setUser(data);
+		} catch {
+			clearToken();
+			setUser(null);
+		} finally {
+			setLoading(false);
+		}
+	}, []);
+
+	useEffect(() => {
+		refresh();
+	}, [refresh]);
+
+	const value = useMemo<AuthContextValue>(() => {
+		const authenticated = Boolean(user || getToken());
+
+		return {
+			user,
+			loading,
 			authenticated,
 
 			async signup(payload) {
@@ -25,13 +54,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 			async verifyEmail(payload) {
 				const { data } = await api.post(ENDPOINTS.verifyEmail, payload);
+				await refresh();
 				return data;
 			},
 
 			async sendVerificationCode(payload) {
 				const { data } = await api.post(
 					ENDPOINTS.sendVerificationCode,
-					payload
+					payload,
 				);
 				return data;
 			},
@@ -45,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				}
 
 				setToken(token);
-				setAuthenticated(true);
+				await refresh();
 				return data;
 			},
 
@@ -54,17 +84,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					await api.post(ENDPOINTS.signout);
 				} finally {
 					clearToken();
-					setAuthenticated(false);
+					setUser(null);
 				}
 			},
 
 			logout() {
 				clearToken();
-				setAuthenticated(false);
+				setUser(null);
 			},
-		}),
-		[authenticated]
-	);
+
+			refresh,
+		};
+	}, [user, loading, refresh]);
 
 	return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }

@@ -6,6 +6,7 @@ export const ENDPOINTS = {
 	verifyEmail: "/api/auth/verifyEmail",
 	sendVerificationCode: "/api/auth/sendVerificationCode",
 	signout: "/api/auth/signout",
+	me: "/api/auth/me",
 
 	// CALCULATIONS
 	taxCalculate: "/api/tax/calculate",

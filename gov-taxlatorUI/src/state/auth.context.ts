@@ -3,14 +3,10 @@ import { createContext, useContext } from "react";
 import type { AnyJson, SignInPayload, SignUpPayload, User } from "../api/types";
 
 export type AuthContextValue = {
-	// ✅ NEW: real auth state
 	user: User | null;
 	loading: boolean;
-
-	// ✅ Derived (keeps compatibility)
 	authenticated: boolean;
 
-	// Existing methods
 	signin: (payload: SignInPayload) => Promise<AnyJson>;
 	signup: (payload: SignUpPayload) => Promise<AnyJson>;
 	verifyEmail: (payload: { email: string; code: string }) => Promise<AnyJson>;
@@ -18,7 +14,6 @@ export type AuthContextValue = {
 	signout: () => Promise<void>;
 	logout: () => void;
 
-	// ✅ NEW: refresh logged-in user
 	refresh: () => Promise<void>;
 };
 

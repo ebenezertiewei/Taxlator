@@ -1,6 +1,8 @@
 // src/App.tsx
 import { Navigate, Route, Routes } from "react-router-dom";
 import Shell from "./components/Shell";
+import { useAuth } from "./state/useAuth";
+import RequireAuth from "./components/RequireAuth";
 
 import Landing from "./pages/Landing";
 import Calculate from "./pages/Calculate";
@@ -19,24 +21,49 @@ import Privacy_Policy from "./pages/Privacy_Policy";
 import Terms_Conditions from "./pages/Terms_Conditions";
 
 export default function App() {
+	const { loading } = useAuth();
+
+	// ✅ GLOBAL AUTH LOADING GUARD (correct place)
+	if (loading) {
+		return (
+			<div className="min-h-screen flex items-center justify-center text-slate-600">
+				Loading…
+			</div>
+		);
+	}
+
 	return (
 		<Shell>
 			<Routes>
 				<Route path="/" element={<Landing />} />
 				<Route path="/calculate" element={<Calculate />} />
-				<Route path="/history" element={<History />} />
+
+				{/* 🔐 PROTECTED */}
+				<Route
+					path="/history"
+					element={
+						<RequireAuth>
+							<History />
+						</RequireAuth>
+					}
+				/>
+
 				<Route path="/taxguide" element={<TaxGuides />} />
 				<Route path="/about" element={<About />} />
 				<Route path="/Privacy_Policy" element={<Privacy_Policy />} />
 				<Route path="/Terms_Conditions" element={<Terms_Conditions />} />
+
+				{/* Auth */}
 				<Route path="/signin" element={<SignIn />} />
 				<Route path="/signup" element={<SignUp />} />
 				<Route path="/verify-email" element={<VerifyEmail />} />
+
 				{/* Public tax pages */}
 				<Route path="/tax/paye-pit" element={<PayePit />} />
 				<Route path="/tax/vat" element={<Vat />} />
 				<Route path="/tax/freelancer" element={<Freelancer />} />
 				<Route path="/tax/company" element={<Company />} />
+
 				<Route path="*" element={<Navigate to="/" replace />} />
 			</Routes>
 		</Shell>

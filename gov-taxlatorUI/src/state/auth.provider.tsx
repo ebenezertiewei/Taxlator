@@ -1,158 +1,104 @@
 // src/state/auth.provider.tsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import {
+	api,
+	clearToken,
+	extractToken,
+	getToken,
+	setToken,
+} from "../api/client";
+import { ENDPOINTS } from "../api/endpoints";
 import { AuthCtx } from "./auth.context";
-import type { AnyJson, SignInPayload, SignUpPayload, User } from "../api/types";
-
-const API_BASE =
-	import.meta.env.VITE_API_BASE_URL || "https://gov-taxlator-api.onrender.com";
-
-axios.defaults.baseURL = API_BASE;
+import type { AuthContextValue } from "./auth.context";
+import type { User } from "../api/types";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-	// ✅ NEW: real auth state
 	const [user, setUser] = useState<User | null>(null);
 	const [loading, setLoading] = useState(true);
 
-	// Derived state (keeps compatibility)
-	const authenticated = !!user;
-
-	/* ---------------------------
-	   Sync axios header from token
-	---------------------------- */
-	useEffect(() => {
-		const token = localStorage.getItem("token");
-		if (token) {
-			axios.defaults.headers.common.Authorization = `Bearer ${token}`;
-		} else {
-			delete axios.defaults.headers.common.Authorization;
-		}
-	}, []);
-
-	/* ---------------------------
-	   Load current user on app start
-	---------------------------- */
+	/* ================= REFRESH USER ================= */
 	const refresh = useCallback(async () => {
-		try {
-			const token = localStorage.getItem("token");
-			if (!token) {
-				setUser(null);
-				return;
-			}
+		const token = getToken();
+		if (!token) {
+			setUser(null);
+			setLoading(false);
+			return;
+		}
 
-			const res = await axios.get("/api/auth/me");
-			setUser(res.data.user);
+		try {
+			const { data } = await api.get(ENDPOINTS.me);
+			setUser(data.user);
 		} catch {
-			// Token invalid / expired
-			localStorage.removeItem("token");
-			delete axios.defaults.headers.common.Authorization;
+			clearToken();
 			setUser(null);
 		} finally {
 			setLoading(false);
 		}
 	}, []);
 
+	/* ================= AUTO-REFRESH ON APP LOAD ================= */
 	useEffect(() => {
 		refresh();
 	}, [refresh]);
 
-	/* ---------------------------
-	   Auth actions
-	---------------------------- */
-	const signin = useCallback(
-		async (payload: SignInPayload): Promise<AnyJson> => {
-			const res = await axios.post("/api/auth/signin", payload, {
-				headers: { "Content-Type": "application/json" },
-			});
+	/* ================= CONTEXT VALUE ================= */
+	const value = useMemo<AuthContextValue>(() => {
+		const authenticated = Boolean(user);
 
-			if (res.data?.token) {
-				localStorage.setItem("token", res.data.token);
-				axios.defaults.headers.common.Authorization = `Bearer ${res.data.token}`;
+		return {
+			user,
+			loading,
+			authenticated,
+
+			async signup(payload) {
+				const { data } = await api.post(ENDPOINTS.signup, payload);
+				return data;
+			},
+
+			async verifyEmail(payload) {
+				const { data } = await api.post(ENDPOINTS.verifyEmail, payload);
 				await refresh();
-			}
+				return data;
+			},
 
-			return res.data;
-		},
-		[refresh],
-	);
+			async sendVerificationCode(payload) {
+				const { data } = await api.post(
+					ENDPOINTS.sendVerificationCode,
+					payload,
+				);
+				return data;
+			},
 
-	const signup = useCallback(
-		async (payload: SignUpPayload): Promise<AnyJson> => {
-			const res = await axios.post("/api/auth/signup", payload, {
-				headers: { "Content-Type": "application/json" },
-			});
-			return res.data;
-		},
-		[],
-	);
+			async signin(payload) {
+				const { data } = await api.post(ENDPOINTS.signin, payload);
 
-	const verifyEmail = useCallback(
-		async (payload: { email: string; code: string }): Promise<AnyJson> => {
-			const res = await axios.post("/api/auth/verifyEmail", payload, {
-				headers: { "Content-Type": "application/json" },
-			});
-			return res.data;
-		},
-		[],
-	);
+				const token = extractToken(data);
+				if (!token) {
+					throw new Error("Signin succeeded but no token returned");
+				}
 
-	const sendVerificationCode = useCallback(
-		async (payload: { email: string }): Promise<AnyJson> => {
-			const res = await axios.post("/api/auth/sendVerificationCode", payload, {
-				headers: { "Content-Type": "application/json" },
-			});
-			return res.data;
-		},
-		[],
-	);
+				setToken(token);
+				await refresh();
+				return data;
+			},
 
-	const signout = useCallback(async () => {
-		try {
-			await axios.post("/api/auth/signout", null);
-		} catch {
-			// ignore
-		} finally {
-			localStorage.removeItem("token");
-			delete axios.defaults.headers.common.Authorization;
-			setUser(null);
-		}
-	}, []);
+			async signout() {
+				try {
+					await api.post(ENDPOINTS.signout);
+				} finally {
+					clearToken();
+					setUser(null);
+				}
+			},
 
-	const logout = useCallback(() => {
-		localStorage.removeItem("token");
-		delete axios.defaults.headers.common.Authorization;
-		setUser(null);
-	}, []);
+			logout() {
+				clearToken();
+				setUser(null);
+			},
 
-	/* ---------------------------
-	   Context value
-	---------------------------- */
-	const value = useMemo(
-		() => ({
-			user,
-			loading,
-			authenticated,
-			signin,
-			signup,
-			verifyEmail,
-			sendVerificationCode,
-			signout,
-			logout,
 			refresh,
-		}),
-		[
-			user,
-			loading,
-			authenticated,
-			signin,
-			signup,
-			verifyEmail,
-			sendVerificationCode,
-			signout,
-			logout,
-			refresh,
-		],
-	);
+		};
+	}, [user, loading, refresh]);
 
 	return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
