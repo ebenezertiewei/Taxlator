@@ -2,8 +2,8 @@
 import axios from "axios";
 import type { AnyJson } from "./types";
 
-const API_BASE =
-	import.meta.env.VITE_API_BASE_URL || "https://gov-taxlator-api.onrender.com";
+// Use environment variable for API base URL
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const TOKEN_KEY = "taxlator_token";
 

@@ -164,11 +164,18 @@ export default function Company() {
 				</div>
 			) : null}
 
-			<label className="text-sm font-bold text-slate-700">Revenue</label>
-			<div className="mt-1 flex items-center gap-2">
-				<span className="text-sm text-slate-600">₦</span>
+			<label htmlFor="revenue" className="text-sm font-bold text-slate-700">
+				Revenue
+			</label>
+
+			<div className="mt-1 relative">
+				<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+					₦
+				</span>
+
 				<input
-					className={`w-full box-border rounded border px-3 py-2 pr-12 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0 ${
+					id="revenue"
+					className={`w-full box-border rounded border pl-8 pr-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0 ${
 						errors.revenue ? "border-red-300" : ""
 					}`}
 					value={form.revenue}
@@ -235,14 +242,22 @@ export default function Company() {
 				</div>
 
 				{form.includeBusinessExpenses && (
-					<div className="mt-4">
-						<label className="text-xs font-semibold text-slate-700 block">
+					<div className="mt-4 space-y-1">
+						<label
+							htmlFor="businessExpenses"
+							className="text-xs font-semibold text-slate-700"
+						>
 							Total Business Expenses
 						</label>
-						<div className="mt-1 flex items-center gap-2">
-							<span className="text-sm text-slate-600">₦</span>
+
+						<div className="relative">
+							<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+								₦
+							</span>
+
 							<input
-								className={`w-full box-border rounded border px-3 py-2 pr-12 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0 ${
+								id="businessExpenses"
+								className={`w-full box-border rounded border pl-8 pr-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0 ${
 									errors.businessExpenses ? "border-red-300" : ""
 								}`}
 								value={form.businessExpenses}
@@ -254,8 +269,9 @@ export default function Company() {
 								inputMode="numeric"
 							/>
 						</div>
+
 						{errors.businessExpenses ? (
-							<div className="mt-1 text-xs text-red-600">
+							<div className="text-xs text-red-600">
 								{errors.businessExpenses}
 							</div>
 						) : null}
