@@ -20,7 +20,12 @@ const app = express();
 const isProd = process.env.NODE_ENV === "production";
 const allowLocalhostInProd = process.env.ALLOW_LOCALHOST_CORS === "true";
 
-const localOrigins = ["http://localhost:5173", "http://localhost:8000"];
+const localOrigins = [
+	"http://localhost:5173",
+	"http://localhost:3000",
+	"http://localhost:8000",
+	"http://192.168.0.3:5173",
+];
 
 const allowedOrigins = [
 	...(isProd ? [process.env.CLIENT_URL].filter(Boolean) : localOrigins),
