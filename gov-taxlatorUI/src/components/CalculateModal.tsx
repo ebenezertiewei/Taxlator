@@ -84,7 +84,7 @@ export default function CalculateModal({
 						/>
 					</div>
 
-					<div className="px-5 pb-5 text-xs text-slate-500">
+					<div className="px-5 pb-5 text-xs text-slate-800">
 						If you are not logged in, you will be redirected to Sign In.
 					</div>
 				</div>

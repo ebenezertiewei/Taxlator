@@ -1,3 +1,4 @@
+// src/api/endpoints.ts
 export const ENDPOINTS = {
 	// AUTH
 	signup: "/api/auth/signup",

@@ -178,7 +178,7 @@ export default function About() {
 	return (
 		<div className="min-h-[80vh] bg-slate-200 px-4 py-8">
 			<div className="mx-auto w-full max-w-5xl">
-				{/* Header */}
+				{/* HEADER */}
 				<div className="text-center">
 					<h1 className="text-3xl font-extrabold text-brand-800">
 						About Taxlator
@@ -188,13 +188,13 @@ export default function About() {
 					</p>
 				</div>
 
-				{/* Content */}
+				{/* CONTENT */}
 				<div className="mt-8 space-y-5">
 					<Card title="Our Mission" icon={<UsersIcon />}>
 						Taxlator was created to simplify tax calculations for Nigerians. We
 						believe that understanding and calculating your tax obligations
 						should not be complicated or expensive. Our mission is to provide
-						free, accurate, and easy to use tax calculation tools that comply
+						free, accurate, and easy to use tax calculator tools that comply
 						with Nigerian tax regulations.
 					</Card>
 

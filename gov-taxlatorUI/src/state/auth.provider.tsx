@@ -1,7 +1,8 @@
+// src/state/auth.provider.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { AuthCtx } from "./auth.context";
-import type { AnyJson, SignInPayload, SignUpPayload } from "../api/types";
+import type { AnyJson, SignInPayload, SignUpPayload, User } from "../api/types";
 
 const API_BASE =
 	import.meta.env.VITE_API_BASE_URL || "https://gov-taxlator-api.onrender.com";
@@ -9,11 +10,16 @@ const API_BASE =
 axios.defaults.baseURL = API_BASE;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-	const [authenticated, setAuthenticated] = useState<boolean>(() => {
-		return !!localStorage.getItem("token");
-	});
+	// ✅ NEW: real auth state
+	const [user, setUser] = useState<User | null>(null);
+	const [loading, setLoading] = useState(true);
 
-	// Keep axios Authorization header in sync with localStorage token
+	// Derived state (keeps compatibility)
+	const authenticated = !!user;
+
+	/* ---------------------------
+	   Sync axios header from token
+	---------------------------- */
 	useEffect(() => {
 		const token = localStorage.getItem("token");
 		if (token) {
@@ -21,24 +27,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		} else {
 			delete axios.defaults.headers.common.Authorization;
 		}
-	}, [authenticated]);
+	}, []);
 
+	/* ---------------------------
+	   Load current user on app start
+	---------------------------- */
+	const refresh = useCallback(async () => {
+		try {
+			const token = localStorage.getItem("token");
+			if (!token) {
+				setUser(null);
+				return;
+			}
+
+			const res = await axios.get("/api/auth/me");
+			setUser(res.data.user);
+		} catch {
+			// Token invalid / expired
+			localStorage.removeItem("token");
+			delete axios.defaults.headers.common.Authorization;
+			setUser(null);
+		} finally {
+			setLoading(false);
+		}
+	}, []);
+
+	useEffect(() => {
+		refresh();
+	}, [refresh]);
+
+	/* ---------------------------
+	   Auth actions
+	---------------------------- */
 	const signin = useCallback(
 		async (payload: SignInPayload): Promise<AnyJson> => {
 			const res = await axios.post("/api/auth/signin", payload, {
 				headers: { "Content-Type": "application/json" },
 			});
 
-			// ✅ ensure token is stored + axios header set
 			if (res.data?.token) {
 				localStorage.setItem("token", res.data.token);
 				axios.defaults.headers.common.Authorization = `Bearer ${res.data.token}`;
-				setAuthenticated(true);
+				await refresh();
 			}
 
 			return res.data;
 		},
-		[]
+		[refresh],
 	);
 
 	const signup = useCallback(
@@ -48,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			});
 			return res.data;
 		},
-		[]
+		[],
 	);
 
 	const verifyEmail = useCallback(
@@ -58,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			});
 			return res.data;
 		},
-		[]
+		[],
 	);
 
 	const sendVerificationCode = useCallback(
@@ -68,30 +103,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			});
 			return res.data;
 		},
-		[]
+		[],
 	);
 
 	const signout = useCallback(async () => {
 		try {
-			// If you have a backend signout endpoint, keep it:
 			await axios.post("/api/auth/signout", null);
 		} catch {
 			// ignore
 		} finally {
 			localStorage.removeItem("token");
 			delete axios.defaults.headers.common.Authorization;
-			setAuthenticated(false);
+			setUser(null);
 		}
 	}, []);
 
 	const logout = useCallback(() => {
 		localStorage.removeItem("token");
 		delete axios.defaults.headers.common.Authorization;
-		setAuthenticated(false);
+		setUser(null);
 	}, []);
 
+	/* ---------------------------
+	   Context value
+	---------------------------- */
 	const value = useMemo(
 		() => ({
+			user,
+			loading,
 			authenticated,
 			signin,
 			signup,
@@ -99,8 +138,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			sendVerificationCode,
 			signout,
 			logout,
+			refresh,
 		}),
 		[
+			user,
+			loading,
 			authenticated,
 			signin,
 			signup,
@@ -108,7 +150,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			sendVerificationCode,
 			signout,
 			logout,
-		]
+			refresh,
+		],
 	);
 
 	return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

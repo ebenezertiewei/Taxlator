@@ -1,5 +1,5 @@
 // taxlator/src/pages/tax/CompanyResultPanel.tsx
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 function formatNaira(value: unknown) {
@@ -15,6 +15,16 @@ function toFiniteNumber(v: unknown, fallback = 0) {
 	const n = typeof v === "number" ? v : Number(v);
 	return Number.isFinite(n) ? n : fallback;
 }
+
+type CompanyResult = {
+	taxPayable?: number;
+	taxRate?: number;
+	profit?: number;
+	profitAfterTax?: number;
+	revenue?: number;
+	expenses?: number;
+	companySize?: string;
+};
 
 type Props = {
 	result: unknown;
@@ -41,58 +51,47 @@ export default function CompanyResultPanel({
 	prefillEmail = "",
 }: Props) {
 	const navigate = useNavigate();
+	const [open, setOpen] = useState(false);
+	const [email, setEmail] = useState(prefillEmail);
 
-	const r = useMemo(() => (result ?? {}) as Record<string, unknown>, [result]);
+	const r = useMemo(() => (result ?? {}) as CompanyResult, [result]);
 
-	// ✅ CIT backend returns: taxPayable, taxRate, profit, companySize, revenue, expenses
-	const taxDue = toFiniteNumber(
-		r.taxPayable ?? r.taxAmount ?? r.totalTax ?? r.totalAnnualTax ?? r.tax ?? 0
-	);
+	const taxDue = toFiniteNumber(r.taxPayable ?? 0);
+	const annualRevenue = toFiniteNumber(r.revenue ?? revenue);
+	const businessExpenses = toFiniteNumber(r.expenses ?? expenses);
 
 	const profit = toFiniteNumber(
-		r.profit ??
-			r.taxableProfit ??
-			r.taxableIncome ??
-			Math.max(0, revenue - expenses)
+		r.profit ?? Math.max(0, annualRevenue - businessExpenses),
 	);
 
-	const profitAfterTax = toFiniteNumber(
-		r.profitAfterTax ?? r.netProfit ?? Math.max(0, profit - taxDue)
-	);
+	const profitAfterTax = toFiniteNumber(r.profitAfterTax ?? profit - taxDue);
 
-	const effectiveCompanySize =
-		(typeof r.companySize === "string"
-			? (r.companySize as string)
-			: undefined) || companySize;
+	const effectiveCompanySize = r.companySize ?? companySize;
 
-	const ratePct = useMemo(() => {
-		const rate = r.taxRate ?? r.rate ?? r.citRate;
-		if (typeof rate === "number" && Number.isFinite(rate)) {
-			return `${Math.round(rate * 100)}%`;
-		}
-		if (effectiveCompanySize === "SMALL") return "0%";
-		if (effectiveCompanySize === "MEDIUM") return "20%";
-		if (effectiveCompanySize === "LARGE") return "30%";
-		return "—";
-	}, [r, effectiveCompanySize]);
-
-	const showExpenses = Number.isFinite(expenses) && expenses > 0;
+	const taxRatePct =
+		typeof r.taxRate === "number"
+			? `${Math.round(r.taxRate * 100)}%`
+			: effectiveCompanySize === "SMALL"
+				? "0%"
+				: effectiveCompanySize === "MEDIUM"
+					? "20%"
+					: effectiveCompanySize === "LARGE"
+						? "30%"
+						: "—";
 
 	return (
 		<div className="bg-white rounded-2xl border shadow-soft overflow-hidden">
-			{/* Header */}
-			<div className="p-6 text-center border-b">
-				<div className="text-sm text-slate-600">Company Income Tax Result</div>
-
-				{/* ✅ Reduced font-size (was text-4xl) */}
-				<div className="mt-2 text-3xl md:text-4xl font-extrabold text-brand-800">
+			{/* HEADER */}
+			<div className="p-3 text-center border-b">
+				<div className="text-sm text-slate-600">
+					Company Income Tax (CIT) Result
+				</div>
+				<div className="mt-2 text-3xl font-extrabold text-brand-800">
 					{formatNaira(taxDue)}
 				</div>
-
 				<div className="text-sm text-slate-600 mt-1">Total Tax Due</div>
 
-				{/* ✅ Company size shown */}
-				<div className="mt-2 text-xs text-slate-600">
+				<div className="mt-1 text-xs text-slate-600">
 					Company Size:{" "}
 					<span className="font-semibold text-slate-800">
 						{companySizeLabel(effectiveCompanySize)}
@@ -100,43 +99,83 @@ export default function CompanyResultPanel({
 				</div>
 			</div>
 
-			<div className="p-6">
-				{/* Summary cards */}
-				<div className="grid grid-cols-2 gap-4">
-					<div className="rounded-2xl bg-slate-50 border p-4">
-						<div className="text-xs text-slate-600">Tax Amount</div>
-						<div className="mt-1 font-semibold">{formatNaira(taxDue)}</div>
+			{/* SUMMARY CARDS */}
+			<div className="p-3">
+				<div className="grid grid-cols-2 gap-2">
+					<div className="rounded-2xl bg-slate-50 border py-4 px-2">
+						<div className="text-xs text-slate-600 text-center">Revenue</div>
+						<div className="mt-1 font-semibold text-sm sm:text-base break-all text-center max-w-full">
+							{formatNaira(annualRevenue)}
+						</div>
 					</div>
-					<div className="rounded-2xl bg-slate-50 border p-4">
-						<div className="text-xs text-slate-600">Profit After Tax</div>
-						<div className="mt-1 font-semibold">
+
+					<div className="rounded-2xl bg-slate-50 border py-4 px-2">
+						<div className="text-xs text-slate-600 text-center">
+							Profit After Tax
+						</div>
+						<div className="mt-1 font-semibold text-sm sm:text-base break-all text-center max-w-full">
 							{formatNaira(profitAfterTax)}
 						</div>
 					</div>
 				</div>
 
-				{/* ✅ Show business expenses only when provided */}
-				{showExpenses && (
-					<div className="mt-5 rounded-2xl bg-slate-50 border px-4 py-4 flex items-center justify-between">
-						<div className="text-sm font-semibold text-slate-800">
-							Business Expenses
+				{/* ACCORDION TRIGGER */}
+				<button
+					type="button"
+					onClick={() => setOpen((s) => !s)}
+					className="mt-5 w-full flex items-center justify-between rounded-2xl bg-slate-50 border px-2 py-4 text-sm font-semibold"
+				>
+					<span>View Tax Breakdown</span>
+					<span className="text-slate-500">{open ? "▴" : "▾"}</span>
+				</button>
+
+				{/* BREAKDOWN */}
+				{open && (
+					<div className="mt-4 rounded-2xl border bg-slate-50 py-4 px-2 w-full">
+						<div className="text-brand-800 font-semibold">
+							Tax Calculation Breakdown
 						</div>
-						<div className="text-sm font-semibold text-slate-900">
-							-{formatNaira(expenses)}
+
+						<div className="mt-3 space-y-1 text-xs text-slate-700">
+							<div className="flex justify-between gap-3">
+								<div className="flex-1 break-words">Revenue</div>
+								<div className="font-medium whitespace-nowrap">
+									{formatNaira(annualRevenue)}
+								</div>
+							</div>
+
+							<div className="flex justify-between gap-3">
+								<div className="flex-1 break-words">Business Expenses</div>
+								<div className="font-medium whitespace-nowrap">
+									-{formatNaira(businessExpenses)}
+								</div>
+							</div>
+						</div>
+
+						<hr className="my-3" />
+
+						<div className="flex justify-between text-xs text-slate-700">
+							<div className="font-semibold">Taxable Profit</div>
+							<div className="font-semibold">{formatNaira(profit)}</div>
+						</div>
+
+						<div className="flex justify-between text-xs text-slate-700 mt-1">
+							<div className="font-semibold">
+								Company Income Tax ({taxRatePct})
+							</div>
+							<div className="font-semibold">{formatNaira(taxDue)}</div>
+						</div>
+
+						<hr className="my-4" />
+
+						<div className="flex justify-between text-xs text-slate-700">
+							<div>Total Annual Tax</div>
+							<div className="font-semibold">{formatNaira(taxDue)}</div>
 						</div>
 					</div>
 				)}
 
-				{/* Rate row */}
-				<div className="mt-5 rounded-2xl bg-slate-50 border px-4 py-4 flex items-center justify-between">
-					<div className="text-sm font-semibold text-slate-800">
-						Company Income Tax rate ({ratePct})
-					</div>
-					<div className="text-sm font-semibold text-slate-900">
-						{formatNaira(taxDue)}
-					</div>
-				</div>
-
+				{/* ACTION */}
 				<button
 					onClick={() => navigate("/calculate")}
 					className="mt-6 w-full rounded bg-brand-800 text-white py-2.5 text-sm font-semibold hover:bg-brand-900"
@@ -144,25 +183,30 @@ export default function CompanyResultPanel({
 					Calculate Another Tax
 				</button>
 
-				{/* Guest CTA */}
+				{/* GUEST ONLY CTA */}
 				{!isAuthenticated && (
-					<div className="mt-6 rounded-2xl border bg-slate-200/60 p-5">
+					<div className="mt-6 rounded-2xl border bg-[#93a7ca] py-4 px-2">
 						<div className="text-sm font-semibold text-slate-900">
 							Save Your Calculations
 						</div>
 						<div className="text-xs text-slate-600 mt-1">
-							Create a free account to save your calculations and track history.
+							Create a free account to save your tax calculations, track
+							history, and get reminders.
 						</div>
 
 						<div className="mt-4 flex gap-3">
-							<input
-								defaultValue={prefillEmail}
-								className="flex-1 w-full rounded border px-3 py-2 text-sm bg-white"
-								placeholder="Enter your email"
-								type="email"
-							/>
+							<div className="flex-1">
+								<input
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									className="w-full rounded border px-3 py-2 text-sm bg-white"
+									placeholder="Enter your email"
+									type="email"
+								/>
+							</div>
 							<Link
 								to="/signup"
+								state={{ email }}
 								className="px-6 rounded bg-brand-800 text-white text-sm font-semibold grid place-items-center hover:bg-brand-900"
 							>
 								Sign Up

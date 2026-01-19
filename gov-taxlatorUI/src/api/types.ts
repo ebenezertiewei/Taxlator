@@ -6,6 +6,14 @@ export type SignUpPayload = {
 	password: string;
 };
 
+export type User = {
+	id: string;
+	firstName: string;
+	lastName: string;
+	email: string;
+};
+
+
 export type SignInPayload = {
 	email: string;
 	password: string;

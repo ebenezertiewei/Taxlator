@@ -48,6 +48,24 @@ export default function PayePitResultPanel({
 		return d;
 	}, [r]);
 
+	const totalDeductions =
+		typeof r.totalDeductions === "number"
+			? r.totalDeductions
+			: Object.values(deductions).reduce(
+					(sum: number, v) => sum + (Number(v) || 0),
+					0,
+				);
+
+	const taxableIncome =
+		typeof r.taxableIncome === "number"
+			? r.taxableIncome
+			: grossIncome - totalDeductions;
+
+	const taxableRemaining =
+		typeof r.taxableRemaining === "number"
+			? r.taxableRemaining
+			: Math.max(0, taxableIncome - 800000);
+
 	const taxBands = (r.taxBands || r.bands || r.progressiveBands) as
 		| Array<Record<string, unknown>>
 		| undefined;
@@ -58,8 +76,8 @@ export default function PayePitResultPanel({
 
 	return (
 		<div className="bg-white rounded-2xl border shadow-soft overflow-hidden">
-			{/* Header */}
-			<div className="p-6 text-center border-b">
+			{/* HEADER */}
+			<div className="p-3 text-center border-b">
 				<div className="text-sm text-slate-600">
 					Salaried (PAYE/ PIT) Result
 				</div>
@@ -69,32 +87,38 @@ export default function PayePitResultPanel({
 				<div className="text-sm text-slate-600 mt-1">Total Tax Due</div>
 			</div>
 
-			{/* Summary cards */}
-			<div className="p-6">
-				<div className="grid grid-cols-2 gap-4">
-					<div className="rounded-2xl bg-slate-50 border p-4">
-						<div className="text-xs text-slate-600">Gross Income</div>
-						<div className="mt-1 font-semibold">{formatNaira(grossIncome)}</div>
+			{/* SUMMARY CARDS */}
+			<div className="p-3">
+				<div className="grid grid-cols-2 gap-2">
+					<div className="rounded-2xl bg-slate-50 border py-4 px-2">
+						<div className="text-xs text-slate-600 text-center">
+							Gross Income
+						</div>
+						<div className="mt-1 font-semibold text-sm sm:text-base break-all text-center max-w-full">
+							{formatNaira(grossIncome)}
+						</div>
 					</div>
-					<div className="rounded-2xl bg-slate-50 border p-4">
-						<div className="text-xs text-slate-600">Net Income</div>
-						<div className="mt-1 font-semibold">{formatNaira(netIncome)}</div>
+					<div className="rounded-2xl bg-slate-50 border py-4 px-2">
+						<div className="text-xs text-slate-600 text-center">Net Income</div>
+						<div className="mt-1 font-semibold text-sm sm:text-base break-all text-center max-w-full">
+							{formatNaira(netIncome)}
+						</div>
 					</div>
 				</div>
 
-				{/* Accordion trigger */}
+				{/* ACCORDION TRIGGER */}
 				<button
 					type="button"
 					onClick={() => setOpen((s) => !s)}
-					className="mt-5 w-full flex items-center justify-between rounded-2xl bg-slate-50 border px-4 py-3 text-sm font-semibold"
+					className="mt-5 w-full flex items-center justify-between rounded-2xl bg-slate-50 border px-2 py-4 text-sm font-semibold"
 				>
 					<span>View Tax Breakdown</span>
 					<span className="text-slate-500">{open ? "▴" : "▾"}</span>
 				</button>
 
-				{/* Breakdown */}
+				{/* BREAKDOWN */}
 				{open && (
-					<div className="mt-4 rounded-2xl border bg-slate-50 p-4">
+					<div className="mt-4 rounded-2xl border bg-slate-50 py-4 px-2 w-full">
 						<div className="text-brand-800 font-semibold">
 							Tax Calculation Breakdown
 						</div>
@@ -103,8 +127,10 @@ export default function PayePitResultPanel({
 							{Object.keys(deductions).length > 0 ? (
 								Object.entries(deductions).map(([k, v]) => (
 									<div key={k} className="flex justify-between gap-3">
-										<div className="truncate">{k}</div>
-										<div className="font-medium">{formatNaira(v)}</div>
+										<div className="flex-1 break-words">{k}</div>
+										<div className="font-medium whitespace-nowrap">
+											{formatNaira(v)}
+										</div>
 									</div>
 								))
 							) : (
@@ -114,11 +140,25 @@ export default function PayePitResultPanel({
 							)}
 						</div>
 
-						{/* Bands (if present) */}
+						<hr className="my-3" />
+
+						<div className="flex justify-between text-xs text-slate-700">
+							<div className="font-semibold">Total Deductions</div>
+							<div className="font-semibold">
+								{formatNaira(totalDeductions)}
+							</div>
+						</div>
+
+						<div className="flex justify-between text-xs text-slate-700 mt-1">
+							<div className="font-semibold">Annual Taxable Income</div>
+							<div className="font-semibold">{formatNaira(taxableIncome)}</div>
+						</div>
+
+						{/* BANDS (IF PRESENT) */}
 						{Array.isArray(taxBands) && taxBands.length > 0 && (
 							<>
 								<hr className="my-4" />
-								<div className="text-xs font-semibold text-slate-700">
+								<div className="text-xs font-bold text-slate-700">
 									Progressive Tax Band (Annual)
 								</div>
 								<div className="mt-2 space-y-1 text-xs text-slate-700">
@@ -140,15 +180,32 @@ export default function PayePitResultPanel({
 							</>
 						)}
 
-						{/* Computation steps (if present) */}
+						{/* COMPUTATION STEPS (IF PRESENT) */}
 						{Array.isArray(computedBreakdown) &&
 							computedBreakdown.length > 0 && (
 								<>
 									<hr className="my-4" />
-									<div className="text-xs font-semibold text-slate-700">
-										Break Down Your Tax
+									<div className="text-xs font-bold text-slate-700">
+										Break down your tax steps
 									</div>
 									<div className="mt-2 space-y-1 text-xs text-slate-700">
+										<div className="flex justify-between gap-3">
+											<div className="flex-1 text-xs text-slate-700 break-words">
+												{/* Mobile */}
+												<span className="sm:hidden">Taxable Balance</span>
+
+												{/* Desktop */}
+												<span className="hidden sm:inline">
+													Taxable Remaining = {formatNaira(taxableIncome)} −
+													₦800,000
+												</span>
+											</div>
+
+											<div className="font-medium whitespace-nowrap">
+												{formatNaira(taxableRemaining)}
+											</div>
+										</div>
+
 										{computedBreakdown.map((s, idx) => (
 											<div key={idx} className="flex justify-between gap-3">
 												<div className="truncate">
@@ -174,14 +231,16 @@ export default function PayePitResultPanel({
 							<div>Monthly Tax</div>
 							<div className="font-semibold">
 								{formatNaira(
-									typeof taxDue === "number" ? taxDue / 12 : Number(taxDue) / 12
+									typeof taxDue === "number"
+										? taxDue / 12
+										: Number(taxDue) / 12,
 								)}
 							</div>
 						</div>
 					</div>
 				)}
 
-				{/* Actions */}
+				{/* ACTION */}
 				<button
 					onClick={() => navigate("/calculate")}
 					className="mt-6 w-full rounded bg-brand-800 text-white py-2.5 text-sm font-semibold hover:bg-brand-900"
@@ -189,9 +248,9 @@ export default function PayePitResultPanel({
 					Calculate Another Tax
 				</button>
 
-				{/* Guest-only CTA (matches your first screenshot intent) */}
+				{/* GUEST ONLY CTA */}
 				{!isAuthenticated && (
-					<div className="mt-6 rounded-2xl border bg-slate-200/60 p-5">
+					<div className="mt-6 rounded-2xl border bg-[#93a7ca] py-4 px-2">
 						<div className="text-sm font-semibold text-slate-900">
 							Save Your Calculations
 						</div>
