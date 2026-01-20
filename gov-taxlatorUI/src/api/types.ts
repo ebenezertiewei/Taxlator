@@ -1,7 +1,17 @@
 // taxlator/src/api/types.ts
+
+/* ===============================
+   AUTH TYPES
+================================ */
+
 export type SignUpPayload = {
 	firstName: string;
 	lastName: string;
+	email: string;
+	password: string;
+};
+
+export type SignInPayload = {
 	email: string;
 	password: string;
 };
@@ -13,27 +23,64 @@ export type User = {
 	email: string;
 };
 
+/* ===============================
+   SHARED TAX TYPES
+================================ */
 
-export type SignInPayload = {
-	email: string;
-	password: string;
-};
-
-// Tax API
-export type TaxType = "PAYE/PIT" | "FREELANCER" | "CIT";
+export type TaxType = "PAYE/PIT" | "FREELANCER" | "CIT" | "VAT";
 export type Frequency = "monthly" | "annual";
-export type CompanySize = "SMALL" | "MEDIUM" | "LARGE";
 
-// PAYE/PIT request (what your Joi expects)
+/* ===============================
+   PAYE / PIT
+================================ */
+
 export type PayePitCalculatePayload = {
 	taxType: "PAYE/PIT";
 	grossIncome: number;
-	frequency?: "monthly" | "annual";
+	frequency?: Frequency;
 	rentRelief?: number;
 	otherDeductions?: number;
 };
 
-// Freelancer request
+export type PayeDeduction = {
+	key: string;
+	label: string;
+	amount: number;
+	rate?: number;
+	base?: number;
+	enabled?: boolean;
+};
+
+export type PayeTaxBand = {
+	rate: number;
+	taxableAmount: number;
+	tax: number;
+};
+
+export type PayeResult = {
+	taxType: "PAYE/PIT";
+	frequency: Frequency;
+
+	grossIncome: number;
+
+	// Consolidated Relief Allowance
+	cra: number;
+
+	deductions: PayeDeduction[];
+	totalDeductions: number;
+
+	taxableIncome: number;
+	totalTax: number;
+	netIncome: number;
+	effectiveTaxRate: number;
+
+	computation: PayeTaxBand[];
+};
+
+/* ===============================
+   FREELANCER
+================================ */
+
 export type FreelancerCalculatePayload = {
 	taxType: "FREELANCER";
 	grossIncome: number;
@@ -42,17 +89,40 @@ export type FreelancerCalculatePayload = {
 	pension?: number;
 };
 
-// CIT request
+/* ===============================
+   COMPANY INCOME TAX (CIT)
+================================ */
+
+/**
+ * ⚠️ SINGLE SOURCE OF TRUTH
+ * Do NOT redefine this anywhere else
+ */
+export type CompanySize = "SMALL" | "MEDIUM" | "LARGE" | "MULTINATIONAL";
+
 export type CitCalculatePayload = {
 	taxType: "CIT";
-	revenue: number;
+	annualTurnover: number;
+	fixedAssets: number;
+	taxableProfit: number;
+	accountingProfit?: number; // only for multinationals
 	companySize: CompanySize;
-	expenses?: number;
-	frequency?: Frequency;
 };
 
-// VAT request
+export type CitResult = {
+	companySize: CompanySize;
+	taxableProfit: number;
+	appliedRate: number; // e.g. 0.3
+	totalTax: number;
+	netProfitAfterTax: number;
+	minimumTaxApplied?: boolean;
+};
+
+/* ===============================
+   VAT
+================================ */
+
 export type VatCalculationType = "add" | "remove";
+
 export type VatTransactionType =
 	| "Domestic sale/Purchase"
 	| "Digital Services"
@@ -65,27 +135,37 @@ export type VatCalculatePayload = {
 	transactionType: VatTransactionType;
 };
 
-// Union payload (one of the above)
+/* ===============================
+   UNION PAYLOAD
+================================ */
+
 export type TaxCalculatePayload =
 	| PayePitCalculatePayload
 	| FreelancerCalculatePayload
-	| CitCalculatePayload;
+	| CitCalculatePayload
+	| VatCalculatePayload;
 
-// JSON-safe helper types (avoid `any`)
+/* ===============================
+   HISTORY
+================================ */
+
+export type HistoryItem = {
+	_id?: string;
+	type: TaxType;
+	input: Record<string, unknown>;
+	result: Record<string, unknown>;
+	createdAt: string | Date;
+};
+
+/* ===============================
+   JSON SAFE HELPERS
+================================ */
+
 export type JsonPrimitive = string | number | boolean | null;
+
 export type JsonValue =
 	| JsonPrimitive
 	| JsonValue[]
 	| { [key: string]: JsonValue };
 
-// History item type
-export type HistoryItem = {
-	_id?: string; // MongoDB ID
-	type: "PAYE/PIT" | "FREELANCER" | "CIT" | "VAT";
-	input: Record<string, unknown>; // store the payload used
-	result: Record<string, unknown>; // store the calculation result
-	createdAt: string | Date;
-};
-
-// Upstream responses vary; keep flexible but lint-safe
 export type AnyJson = Record<string, unknown>;

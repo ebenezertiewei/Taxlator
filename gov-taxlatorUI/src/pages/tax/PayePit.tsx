@@ -1,6 +1,3 @@
-// taxlator/src/pages/tax/PayePit.tsx
-
-//  TO BE FIXED LATER
 import { useMemo, useState } from "react";
 import TaxPageLayout from "./TaxPageLayout";
 import { api } from "../../api/client";
@@ -9,41 +6,28 @@ import { addHistory } from "../../state/history";
 import type { PayePitCalculatePayload } from "../../api/types";
 import { useAuth } from "../../state/useAuth";
 import PayePitResultPanel from "./PayePitResultPanel";
-
-type ApiSuccess<T> = { success: true; data: T; message?: string };
-type ApiFail = { success?: false; message?: string; error?: string };
-
-/* =======================
-   Helpers
-======================= */
-const formatNumber = (value: string) => {
-	if (!value) return "";
-	const numeric = value.replace(/,/g, "");
-	if (isNaN(Number(numeric))) return value;
-	return Number(numeric).toLocaleString();
-};
-
-const parseNumber = (value: string) => Number(value.replace(/,/g, "") || 0);
+import CurrencyInput from "../../components/CurrencyInput";
+import { parseNumber } from "../../utils/numberInput";
+import type { PayeResult } from "../../api/types";
 
 export default function PayePit() {
-	const { authenticated } = useAuth();
-
-	// income
 	const [grossAnnualIncome, setGrossAnnualIncome] = useState("");
 
-	// deduction toggles
-	const [includeRentRelief, setIncludeRentRelief] = useState(true); // CRA default
-	const [includePension, setIncludePension] = useState(false);
-	const [includeNhf, setIncludeNhf] = useState(false);
 	const [includeNhIs, setIncludeNhIs] = useState(false);
+	const [includeNhf, setIncludeNhf] = useState(false);
 
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState("");
-	const [result, setResult] = useState<unknown>(null);
+	const [result, setResult] = useState<PayeResult | null>(null);
 
 	const grossIncomeNumber = useMemo(
 		() => parseNumber(grossAnnualIncome),
 		[grossAnnualIncome],
+	);
+
+	const pensionAmount = useMemo(
+		() => grossIncomeNumber * 0.08,
+		[grossIncomeNumber],
 	);
 
 	async function calculate() {
@@ -51,53 +35,23 @@ export default function PayePit() {
 		setBusy(true);
 
 		try {
-			const rentReliefAmount = includeRentRelief ? grossIncomeNumber * 0.2 : 0;
-
-			const otherDeductions =
-				(includePension ? grossIncomeNumber * 0.08 : 0) +
-				(includeNhf ? grossIncomeNumber * 0.025 : 0) +
-				(includeNhIs ? grossIncomeNumber * 0.015 : 0);
-
-			const payload: PayePitCalculatePayload = {
-				taxType: "PAYE/PIT",
+			const payload = {
+				taxType: "PAYE/PIT" as const,
 				grossIncome: grossIncomeNumber,
-				rentRelief: rentReliefAmount,
-				otherDeductions,
+				includeNhIs,
+				includeNhf,
+				rentRelief: parseNumber(annualRent),
+				otherDeductions: parseNumber(otherDeductions),
 			};
 
-			const { data } = await api.post<ApiSuccess<unknown> | ApiFail>(
-				ENDPOINTS.taxCalculate,
-				payload,
-			);
-
-			if (!("success" in data) || data.success !== true) {
-				setError(
-					(data as ApiFail).message ||
-						(data as ApiFail).error ||
-						"PAYE/PIT calculation failed",
-				);
-				return;
-			}
+			const { data } = await api.post<{
+				success: true;
+				data: PayeResult;
+			}>(ENDPOINTS.taxCalculate, payload);
 
 			setResult(data.data);
-
-			addHistory({
-				type: "PAYE_PIT",
-				input: payload,
-				result: data.data,
-			});
-		} catch (err: unknown) {
-			const e = err as {
-				response?: { data?: { message?: string; error?: string } };
-				message?: string;
-			};
-
-			setError(
-				e.response?.data?.message ||
-					e.response?.data?.error ||
-					e.message ||
-					"PAYE/PIT calculation failed",
-			);
+		} catch {
+			setError("PAYE calculation failed");
 		} finally {
 			setBusy(false);
 		}
@@ -118,87 +72,77 @@ export default function PayePit() {
 			}
 		>
 			{error && (
-				<div className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">
+				<div className="mb-3 text-sm text-red-700 bg-red-50 border rounded p-2">
 					{error}
 				</div>
 			)}
 
-			<div className="space-y-1">
-				<label
-					htmlFor="grossAnnualIncome"
-					className="text-sm font-bold text-slate-700"
-				>
-					Gross Annual Income
-				</label>
+			<CurrencyInput
+				label="Gross Annual Income"
+				value={grossAnnualIncome}
+				onChange={setGrossAnnualIncome}
+				placeholder="0"
+			/>
 
-				<div className="relative">
-					<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-						₦
-					</span>
-
-					<input
-						id="grossAnnualIncome"
-						className="w-full box-border rounded border pl-8 pr-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0"
-						value={formatNumber(grossAnnualIncome)}
-						onChange={(e) =>
-							setGrossAnnualIncome(e.target.value.replace(/,/g, ""))
-						}
-						placeholder="0"
-						inputMode="numeric"
-					/>
+			{/* Pension (auto, no toggle) */}
+			<div className="mt-4 rounded-xl border p-4 bg-white">
+				<div className="text-xs font-semibold text-slate-900">
+					Pension Contribution
+				</div>
+				<div className="text-xs text-slate-600 mt-1">
+					8% deduction (₦{pensionAmount.toLocaleString("en-NG")})
 				</div>
 			</div>
 
-			{/* Deduction Toggles */}
-			<div className="mt-4 space-y-3">
-				<label className="flex items-center justify-between border rounded-xl p-3">
-					<div>
-						<div className="font-semibold text-xs">Rent Relief</div>
-						<div className="text-xs text-slate-600">20% of gross income</div>
+			{/* NHIS */}
+			<div className="mt-4 rounded-xl border p-4 bg-white flex justify-between">
+				<div>
+					<div className="text-xs font-semibold text-slate-900">
+						National Health Insurance Scheme
 					</div>
-					<input
-						type="checkbox"
-						checked={includeRentRelief}
-						onChange={(e) => setIncludeRentRelief(e.target.checked)}
-					/>
-				</label>
-
-				<label className="flex items-center justify-between border rounded-xl p-3">
-					<div>
-						<div className="font-semibold text-xs">Pension Contribution</div>
-						<div className="text-xs text-slate-600">8% deduction</div>
+					<div className="text-xs text-slate-600">
+						5% deduction on basic salary
 					</div>
-					<input
-						type="checkbox"
-						checked={includePension}
-						onChange={(e) => setIncludePension(e.target.checked)}
-					/>
-				</label>
-
-				<label className="flex items-center justify-between border rounded-xl p-3">
-					<div>
-						<div className="font-semibold text-xs">National Housing Fund</div>
-						<div className="text-xs text-slate-600">2.5% deduction</div>
-					</div>
-					<input
-						type="checkbox"
-						checked={includeNhf}
-						onChange={(e) => setIncludeNhf(e.target.checked)}
-					/>
-				</label>
-
-				<label className="flex items-center justify-between border rounded-xl p-3">
-					<div>
-						<div className="font-semibold text-xs">Health Insurance</div>
-						<div className="text-xs text-slate-600">5% deduction</div>
-					</div>
-					<input
-						type="checkbox"
-						checked={includeNhIs}
-						onChange={(e) => setIncludeNhIs(e.target.checked)}
-					/>
-				</label>
+				</div>
+				<input
+					type="checkbox"
+					className="h-4 w-4 accent-brand-800"
+					checked={includeNhIs}
+					onChange={(e) => setIncludeNhIs(e.target.checked)}
+				/>
 			</div>
+
+			{/* NHF */}
+			<div className="mt-4 rounded-xl border p-4 bg-white flex justify-between">
+				<div>
+					<div className="text-xs font-semibold text-slate-900">
+						National Housing Fund
+					</div>
+					<div className="text-xs text-slate-600">
+						2.5% deduction on basic salary
+					</div>
+				</div>
+				<input
+					type="checkbox"
+					className="h-4 w-4 accent-brand-800"
+					checked={includeNhf}
+					onChange={(e) => setIncludeNhf(e.target.checked)}
+				/>
+			</div>
+
+			<CurrencyInput
+				label="Annual Rent (20% Relief)"
+				value={annualRent}
+				onChange={setAnnualRent}
+				placeholder="0"
+			/>
+
+			<CurrencyInput
+				label="Other Allowable Deductions"
+				value={otherDeductions}
+				onChange={setOtherDeductions}
+				placeholder="0"
+			/>
 
 			<button
 				onClick={calculate}

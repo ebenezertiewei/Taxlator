@@ -1,4 +1,3 @@
-// taxlator/src/pages/tax/Company.tsx
 import { useMemo, useState } from "react";
 import TaxPageLayout from "./TaxPageLayout";
 import { api } from "../../api/client";
@@ -6,136 +5,57 @@ import { ENDPOINTS } from "../../api/endpoints";
 import { addHistory } from "../../state/history";
 import { useAuth } from "../../state/useAuth";
 import CompanyResultPanel from "./CompanyResultPanel";
-import type { CitCalculatePayload } from "../../api/types";
-
-type CompanySize = "SMALL" | "MEDIUM" | "LARGE";
-
-type FormState = {
-	revenue: string;
-	companySize: CompanySize | "";
-	includeBusinessExpenses: boolean;
-	businessExpenses: string;
-};
-
-type FieldErrors = Partial<Record<keyof FormState, string>> & {
-	general?: string;
-};
-
-type ApiSuccess<T> = { success: true; data: T; message?: string };
-type ApiFail = { success?: false; message?: string; error?: string };
-
-function isApiSuccess<T>(d: ApiSuccess<T> | ApiFail): d is ApiSuccess<T> {
-	return (
-		typeof d === "object" && d !== null && "success" in d && d.success === true
-	);
-}
-
-function toNumberSafe(v: string): number {
-	const cleaned = v.replace(/,/g, "").trim();
-	if (!cleaned) return 0;
-	const n = Number(cleaned);
-	return Number.isFinite(n) ? n : NaN;
-}
-
-function formatNumberInput(v: string) {
-	// keep digits only
-	const digits = v.replace(/[^\d]/g, "");
-	if (!digits) return "";
-	// add commas
-	return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
+import type {
+	CitCalculatePayload,
+	CitResult,
+	CompanySize,
+} from "../../api/types";
 
 export default function Company() {
 	const { authenticated } = useAuth();
 
-	const [form, setForm] = useState<FormState>({
-		revenue: "",
-		companySize: "",
-		includeBusinessExpenses: false,
-		businessExpenses: "",
-	});
-
-	const [errors, setErrors] = useState<FieldErrors>({});
+	const [revenue, setRevenue] = useState("");
+	const [companySize, setCompanySize] = useState<CompanySize | "">("");
+	const [includeExpenses, setIncludeExpenses] = useState(false);
+	const [expenses, setExpenses] = useState("");
 	const [busy, setBusy] = useState(false);
-	const [result, setResult] = useState<unknown>(null);
+	const [result, setResult] = useState<CitResult | null>(null);
 
-	const revenueN = useMemo(() => toNumberSafe(form.revenue), [form.revenue]);
-	const businessExpensesN = useMemo(
-		() => toNumberSafe(form.businessExpenses),
-		[form.businessExpenses],
+	const revenueN = useMemo(
+		() => Number(revenue.replace(/,/g, "")) || 0,
+		[revenue],
 	);
 
-	function validate(): boolean {
-		const next: FieldErrors = {};
-
-		if (!form.revenue.trim()) next.revenue = "Revenue is required";
-		else if (!Number.isFinite(revenueN))
-			next.revenue = "Revenue must be a valid number";
-		else if (revenueN < 0) next.revenue = "Revenue cannot be negative";
-
-		if (!form.companySize) next.companySize = "Select company size";
-
-		if (form.includeBusinessExpenses) {
-			if (!form.businessExpenses.trim())
-				next.businessExpenses = "Enter total business expenses";
-			else if (!Number.isFinite(businessExpensesN))
-				next.businessExpenses = "Expenses must be a valid number";
-			else if (businessExpensesN < 0)
-				next.businessExpenses = "Expenses cannot be negative";
-			else if (Number.isFinite(revenueN) && businessExpensesN > revenueN) {
-				next.businessExpenses = "Expenses cannot be greater than revenue";
-			}
-		}
-
-		setErrors(next);
-		return Object.keys(next).length === 0;
-	}
+	const expensesN = useMemo(
+		() => Number(expenses.replace(/,/g, "")) || 0,
+		[expenses],
+	);
 
 	async function onProceed() {
-		if (!validate()) return;
+		if (!companySize || revenueN <= 0) return;
 
 		setBusy(true);
-		setErrors({});
+
 		try {
 			const payload: CitCalculatePayload = {
 				taxType: "CIT",
-				revenue: revenueN,
-				companySize: form.companySize as CompanySize,
-				expenses: form.includeBusinessExpenses ? businessExpensesN : 0,
-				// frequency optional; backend defaults to "annual"
-				// frequency: "annual",
+				annualTurnover: revenueN,
+				fixedAssets: 0,
+				taxableProfit: revenueN - (includeExpenses ? expensesN : 0),
+				companySize,
 			};
 
-			const { data } = await api.post<ApiSuccess<unknown> | ApiFail>(
-				ENDPOINTS.taxCalculate,
-				payload,
-			);
-
-			if (!isApiSuccess(data)) {
-				const msg =
-					data.message || data.error || "Company Income Tax calculation failed";
-				setErrors({ general: msg });
-				return;
-			}
+			const { data } = await api.post<{
+				success: boolean;
+				data: CitResult;
+			}>(ENDPOINTS.taxCalculate, payload);
 
 			setResult(data.data);
 
 			addHistory({
 				type: "COMPANY",
-				input: payload as unknown as Record<string, unknown>,
+				input: payload,
 				result: data.data,
-			});
-		} catch (err: unknown) {
-			const e = err as {
-				response?: { data?: { message?: string; error?: string } };
-				message?: string;
-			};
-			setErrors({
-				general:
-					e.response?.data?.message ||
-					e.response?.data?.error ||
-					e.message ||
-					"Company Income Tax calculation failed",
 			});
 		} finally {
 			setBusy(false);
@@ -150,139 +70,55 @@ export default function Company() {
 				result ? (
 					<CompanyResultPanel
 						result={result}
-						revenue={revenueN}
-						expenses={form.includeBusinessExpenses ? businessExpensesN : 0}
-						companySize={form.companySize || undefined}
+						companySize={companySize || undefined}
 						isAuthenticated={authenticated}
 					/>
 				) : undefined
 			}
 		>
-			{errors.general ? (
-				<div className="mb-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">
-					{errors.general}
-				</div>
-			) : null}
+			<label className="text-sm font-semibold">Revenue (₦)</label>
+			<input
+				className="mt-1 w-full rounded border px-3 py-2"
+				value={revenue}
+				onChange={(e) => setRevenue(e.target.value)}
+				inputMode="numeric"
+			/>
 
-			<label htmlFor="revenue" className="text-sm font-bold text-slate-700">
-				Revenue
+			<label className="mt-4 block text-sm font-semibold">Company Size</label>
+			<select
+				className="mt-1 w-full rounded border px-3 py-2"
+				value={companySize}
+				onChange={(e) => setCompanySize(e.target.value as CompanySize)}
+			>
+				<option value="">Select size</option>
+				<option value="SMALL">Small Company</option>
+				<option value="MEDIUM">Medium Company</option>
+				<option value="LARGE">Large Company</option>
+			</select>
+
+			<label className="mt-4 flex items-center gap-2 text-sm">
+				<input
+					type="checkbox"
+					checked={includeExpenses}
+					onChange={(e) => setIncludeExpenses(e.target.checked)}
+				/>
+				Include Business Expenses
 			</label>
 
-			<div className="mt-1 relative">
-				<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-					₦
-				</span>
-
+			{includeExpenses && (
 				<input
-					id="revenue"
-					className={`w-full box-border rounded border pl-8 pr-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0 ${
-						errors.revenue ? "border-red-300" : ""
-					}`}
-					value={form.revenue}
+					className="mt-2 w-full rounded border px-3 py-2"
+					placeholder="Expenses (₦)"
+					value={expenses}
+					onChange={(e) => setExpenses(e.target.value)}
 					inputMode="numeric"
-					onChange={(e) => {
-						const formatted = formatNumberInput(e.target.value);
-						setForm((s) => ({ ...s, revenue: formatted }));
-					}}
-					placeholder="0"
 				/>
-			</div>
-			{errors.revenue ? (
-				<div className="mt-1 text-xs text-red-600">{errors.revenue}</div>
-			) : null}
-
-			<div className="mt-4">
-				<label className="text-sm font-bold text-slate-700">Company Size</label>
-				<select
-					className={`mt-1 w-full rounded border px-3 py-2 text-sm bg-white ${
-						errors.companySize ? "border-red-300" : ""
-					}`}
-					value={form.companySize}
-					onChange={(e) =>
-						setForm((s) => ({
-							...s,
-							companySize: e.target.value as CompanySize,
-						}))
-					}
-				>
-					<option value="">Select Size</option>
-					<option value="SMALL">Small Company</option>
-					<option value="MEDIUM">Medium Company</option>
-					<option value="LARGE">Large Company</option>
-				</select>
-				{errors.companySize ? (
-					<div className="mt-1 text-sm text-red-600">{errors.companySize}</div>
-				) : null}
-			</div>
-
-			<div className="mt-4 rounded-xl border p-4 bg-white">
-				<div className="flex items-start justify-between gap-3">
-					<div>
-						<div className="text-xs font-semibold text-slate-900">
-							Include Business Expenses
-						</div>
-						<div className="text-xs text-slate-600 mt-1">
-							Deduct allowable business expenses from revenue
-						</div>
-					</div>
-
-					<input
-						type="checkbox"
-						className="h-5 w-5 accent-brand-800"
-						checked={form.includeBusinessExpenses}
-						onChange={(e) =>
-							setForm((s) => ({
-								...s,
-								includeBusinessExpenses: e.target.checked,
-								// optional: clear expenses when turning off
-								...(e.target.checked ? null : { businessExpenses: "" }),
-							}))
-						}
-					/>
-				</div>
-
-				{form.includeBusinessExpenses && (
-					<div className="mt-4 space-y-1">
-						<label
-							htmlFor="businessExpenses"
-							className="text-xs font-semibold text-slate-700"
-						>
-							Total Business Expenses
-						</label>
-
-						<div className="relative">
-							<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-								₦
-							</span>
-
-							<input
-								id="businessExpenses"
-								className={`w-full box-border rounded border pl-8 pr-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-0 ${
-									errors.businessExpenses ? "border-red-300" : ""
-								}`}
-								value={form.businessExpenses}
-								onChange={(e) => {
-									const formatted = formatNumberInput(e.target.value);
-									setForm((s) => ({ ...s, businessExpenses: formatted }));
-								}}
-								placeholder="0"
-								inputMode="numeric"
-							/>
-						</div>
-
-						{errors.businessExpenses ? (
-							<div className="text-xs text-red-600">
-								{errors.businessExpenses}
-							</div>
-						) : null}
-					</div>
-				)}
-			</div>
+			)}
 
 			<button
 				onClick={onProceed}
 				disabled={busy}
-				className="mt-6 w-full rounded bg-brand-800 text-white py-2.5 text-sm font-semibold hover:bg-brand-900 disabled:opacity-60"
+				className="mt-6 w-full rounded bg-brand-800 py-2.5 text-sm font-semibold text-white"
 			>
 				{busy ? "Calculating..." : "Proceed"}
 			</button>
